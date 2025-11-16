@@ -3,7 +3,7 @@
 ## Quick Start
 
 ### Prerequisites
-- Node.js 18+ installed
+- Node.js 20+ installed
 - Cloudflare account
 - Git repository connected
 
@@ -73,7 +73,7 @@ If you need environment variables:
 ## Troubleshooting
 
 ### Build Fails
-- Check Node.js version (requires 18+)
+- Check Node.js version (requires 20+)
 - Verify all dependencies are installed
 - Check build logs in Cloudflare dashboard
 
