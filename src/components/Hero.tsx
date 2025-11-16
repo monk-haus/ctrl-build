@@ -15,8 +15,11 @@ export default function Hero() {
 
   useEffect(() => {
     // Start animation after page transition completes (0.0s per concept)
-    const t = setTimeout(() => setEntered(true), 0);
-    return () => clearTimeout(t);
+    // Use requestAnimationFrame to ensure this runs after hydration
+    const rafId = requestAnimationFrame(() => {
+      setEntered(true);
+    });
+    return () => cancelAnimationFrame(rafId);
   }, []);
 
   // Preload and track image loading with timeout - only on desktop
@@ -95,17 +98,8 @@ export default function Hero() {
   }, []);
 
   // Set initial wire position once on mount - subtle offset per concept
-  useEffect(() => {
-    const wire = wireRef.current;
-    if (wire) {
-      try {
-        // Initial offset: "almost perfectly over the photo, but offset by a few pixels"
-        wire.style.transform = `translate3d(3px, -3px, 0)`;
-      } catch (e) {
-        // Ignore errors
-      }
-    }
-  }, []);
+  // Use CSS for initial state to avoid hydration mismatch
+  // The transform is set via CSS, and only updated via JS for interactions
 
   // Effect for desktop mouse handlers only (>=1200px)
   useEffect(() => {
@@ -297,7 +291,13 @@ export default function Hero() {
         <div
           ref={wireRef}
           className="ctrl-hero-wire"
-          style={{ backgroundImage: `url(/assets/images/hero/blueprint.png)`, backgroundSize: "contain", backgroundRepeat: "no-repeat", backgroundPosition: "center" }}
+          style={{ 
+            backgroundImage: `url(/assets/images/hero/blueprint.png)`, 
+            backgroundSize: "contain", 
+            backgroundRepeat: "no-repeat", 
+            backgroundPosition: "center",
+            transform: "translate3d(3px, -3px, 0)" // Initial offset in inline style to match server render
+          }}
         />
       </div>
       <div className="ctrl-scroll-indicator">+</div>

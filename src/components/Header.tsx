@@ -25,6 +25,9 @@ export default function Header() {
   const pathname = usePathname();
 
   useEffect(() => {
+    // Only run on client to avoid hydration mismatch
+    if (typeof window === 'undefined') return;
+    
     let rafId: number | null = null;
     let ticking = false;
     const onScroll = () => {
@@ -35,7 +38,11 @@ export default function Header() {
         ticking = false;
       });
     };
-    onScroll();
+    // Don't call onScroll immediately - wait for next frame to avoid hydration mismatch
+    // The initial state (false) matches server render
+    rafId = requestAnimationFrame(() => {
+      onScroll();
+    });
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
