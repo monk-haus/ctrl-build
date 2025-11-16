@@ -28,7 +28,7 @@ Framework preset: Next.js
 Build command: npm run build
 Build output directory: .next
 Root directory: / (leave empty if root)
-Node.js version: 18 (or as specified in .nvmrc)
+Node.js version: 20 (or as specified in .nvmrc)
 ```
 
 ### 4. Environment Variables (if needed)
