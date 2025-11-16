@@ -10,32 +10,26 @@ export default function Hero() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const photoRef = useRef<HTMLDivElement | null>(null);
   const wireRef = useRef<HTMLDivElement | null>(null);
-  const isDesktopRef = useRef<boolean>(false);
-  const mountedRef = useRef<boolean>(false);
 
+  // Stable desktop detection using matchMedia - does NOT flicker on mobile Safari
+  // This is computed once and never changes, preventing effect races
+  const isDesktop = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia("(min-width: 1200px)").matches;
+  }, []);
+
+  // Start animation after hydration completes
   useEffect(() => {
-    // Start animation after page transition completes (0.0s per concept)
-    // Use requestAnimationFrame to ensure this runs after hydration
     const rafId = requestAnimationFrame(() => {
       setEntered(true);
     });
     return () => cancelAnimationFrame(rafId);
   }, []);
 
-  // Preload and track image loading with timeout - only on desktop
+  // Image preload - only on desktop, only once
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    
-    // Check if mobile first, before any state updates
-    const isMobile = window.innerWidth < 1200;
-    if (isMobile) {
-      // On mobile, don't preload - let CSS handle it naturally
-      // Don't set imageLoaded here - let it load naturally via CSS
-      // This prevents any JavaScript image loading that could cause crashes
-      return;
-    }
+    if (!isDesktop) return;
+    if (typeof window === 'undefined') return;
 
     let timeoutId: NodeJS.Timeout;
     let loaded = false;
@@ -56,16 +50,15 @@ export default function Hero() {
       clearTimeout(timeoutId);
       console.error('Hero photo failed to load');
       setImageError(true);
-      setImageLoaded(true); // Set to true anyway to prevent blocking
+      setImageLoaded(true);
     };
     
-    // Set timeout to prevent indefinite waiting
     timeoutId = setTimeout(() => {
       if (!loaded && !cancelled) {
         console.warn('Hero photo loading timeout');
         handleError();
       }
-    }, 5000); // 5 second timeout
+    }, 5000);
     
     try {
       img.onload = handleLoad;
@@ -78,42 +71,19 @@ export default function Hero() {
     
     return () => {
       cancelled = true;
-      loaded = true; // Prevent callbacks after cleanup
+      loaded = true;
       clearTimeout(timeoutId);
       if (img) {
         img.onload = null;
         img.onerror = null;
       }
     };
-  }, []);
+  }, [isDesktop]);
 
+  // Desktop mouse parallax - ONLY runs on desktop, ONLY when image loaded
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    // Set initial value on mount - use ref only, no state updates
-    isDesktopRef.current = window.innerWidth >= 1200;
-    mountedRef.current = true;
-    
-    // No resize listener needed - we check on each effect run
-  }, []);
-
-  // Set initial wire position once on mount - subtle offset per concept
-  // Use CSS for initial state to avoid hydration mismatch
-  // The transform is set via CSS, and only updated via JS for interactions
-
-  // Effect for desktop mouse handlers only (>=1200px)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    // Only run on desktop
-    if (window.innerWidth < 1200) {
-      return;
-    }
-    
-    // Only run when image is loaded
-    if (!imageLoaded) {
-      return;
-    }
+    if (!isDesktop) return;
+    if (!imageLoaded) return;
     
     const el = containerRef.current;
     const photo = photoRef.current;
@@ -121,7 +91,7 @@ export default function Hero() {
     if (!el || !photo || !wire) return;
     
     const baseX = 3;
-    const baseY = -3; // Match initial offset
+    const baseY = -3;
     
     let rafId: number | null = null;
     let ticking = false;
@@ -177,17 +147,12 @@ export default function Hero() {
       el.removeEventListener("mousemove", onMove);
       el.removeEventListener("mouseleave", onLeave);
     };
-  }, [imageLoaded]);
+  }, [isDesktop, imageLoaded]);
 
-  // Effect for tablet/mobile scroll parallax (<1200px)
+  // Mobile/tablet scroll parallax - ONLY runs on mobile/tablet, NEVER on desktop
   useEffect(() => {
+    if (isDesktop) return;
     if (typeof window === 'undefined') return;
-    
-    // Only run on tablet/mobile
-    const width = window.innerWidth;
-    if (width >= 1200) {
-      return;
-    }
     
     const photo = photoRef.current;
     const wire = wireRef.current;
@@ -213,28 +178,17 @@ export default function Hero() {
           const rect = container.getBoundingClientRect();
           const windowHeight = window.innerHeight;
           
-          // Calculate scroll progress: how much of the hero section has scrolled past viewport
-          // When section enters viewport, parallax starts
-          // When section exits viewport, parallax completes
           const sectionTop = rect.top;
           const sectionBottom = rect.bottom;
-          const sectionHeight = rect.height;
           
-          // Parallax activates when section is in or near viewport
-          // Calculate offset based on scroll position
-          // Wireframe scrolls faster (moves more) than photo
           let parallaxOffset = 0;
           
           if (sectionTop < windowHeight && sectionBottom > 0) {
-            // Section is in viewport - calculate parallax based on scroll position
-            // As user scrolls down, wireframe moves faster upward (separates from photo)
             const scrollAmount = windowHeight - sectionTop;
-            parallaxOffset = Math.max(0, Math.min(scrollAmount * 0.15, 40)); // Max 40px separation
+            parallaxOffset = Math.max(0, Math.min(scrollAmount * 0.15, 40));
           }
           
-          // Photo moves slower (less parallax)
           const photoY = -parallaxOffset * 0.2;
-          // Wireframe moves faster (more parallax) - creates separation
           const wireY = -parallaxOffset * 0.6 + baseY;
           
           photo.style.transform = `translate3d(0, ${photoY}px, 0)`;
@@ -247,18 +201,21 @@ export default function Hero() {
       });
     };
     
-    // Initial call
-    onScroll();
+    // Initial call after a frame to ensure DOM is ready
+    const initRaf = requestAnimationFrame(() => {
+      onScroll();
+    });
     
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll, { passive: true });
     
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
+      cancelAnimationFrame(initRaf);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
     };
-  }, []);
+  }, [isDesktop]);
 
   const containerClass = useMemo(
     () => ["ctrl-hero", entered ? "in" : ""].filter(Boolean).join(" "),
@@ -296,7 +253,7 @@ export default function Hero() {
             backgroundSize: "contain", 
             backgroundRepeat: "no-repeat", 
             backgroundPosition: "center",
-            transform: "translate3d(3px, -3px, 0)" // Initial offset in inline style to match server render
+            transform: "translate3d(3px, -3px, 0)"
           }}
         />
       </div>
@@ -304,5 +261,3 @@ export default function Hero() {
     </section>
   );
 }
-
-
