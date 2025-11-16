@@ -287,10 +287,41 @@ body {
   overflow: hidden;
 }
 
-@media (max-width: 1023px) {
+/* Tablet: Visual on top, text below */
+@media (min-width: 768px) and (max-width: 1199px) {
   .ctrl-hero {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 60vh;
+    grid-template-rows: 60vh auto;
+    min-height: auto;
+  }
+  .ctrl-hero-left { 
+    order: 2;
+    padding: 48px 24px;
+    justify-content: flex-start;
+  }
+  .ctrl-hero-right { 
+    order: 1;
+    height: 60vh;
+    min-height: 60vh;
+  }
+}
+
+/* Mobile: Text first, visual below */
+@media (max-width: 767px) {
+  .ctrl-hero {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    min-height: auto;
+  }
+  .ctrl-hero-left { 
+    order: 1;
+    padding: 96px 20px 32px 20px;
+    justify-content: flex-start;
+  }
+  .ctrl-hero-right { 
+    order: 2;
+    height: 56vh;
+    min-height: 56vh;
   }
 }
 
@@ -308,16 +339,6 @@ body {
   min-height: 60vh;
 }
 
-@media (min-width: 768px) and (max-width: 1199px) {
-  .ctrl-hero-left { order: 2 }
-  .ctrl-hero-right { order: 1; min-height: 60vh }
-}
-
-@media (max-width: 767px) {
-  .ctrl-hero-left { order: 1; padding: 96px 20px 32px 20px }
-  .ctrl-hero-right { order: 2; min-height: 56vh }
-}
-
 .ctrl-hero-h1 {
   font-family: var(--font-raptor), ui-sans-serif, system-ui;
   color: var(--color-text-primary);
@@ -328,11 +349,25 @@ body {
   max-width: 12ch;
 }
 
+@media (min-width: 768px) and (max-width: 1199px) {
+  .ctrl-hero-h1 {
+    font-size: 10vw;
+    max-width: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .ctrl-hero-h1 {
+    font-size: 14vw;
+    max-width: none;
+  }
+}
+
 .ctrl-hero-line {
   display: block;
   transform: translateY(100%);
   opacity: 0;
-  transition: transform 500ms ease, opacity 500ms ease;
+  transition: transform 400ms cubic-bezier(.2,.7,.2,1), opacity 400ms cubic-bezier(.2,.7,.2,1);
 }
 
 @media (min-width: 1200px) {
@@ -344,19 +379,19 @@ body {
 .ctrl-hero.in .ctrl-hero-line:nth-child(1) {
   transform: translateY(0);
   opacity: 1;
-  transition-delay: 120ms;
+  transition-delay: 300ms; /* 0.5s total: 0.2s visual + 0.3s delay */
 }
 
 .ctrl-hero.in .ctrl-hero-line:nth-child(2) {
   transform: translateY(0);
   opacity: 1;
-  transition-delay: 220ms;
+  transition-delay: 400ms;
 }
 
 .ctrl-hero.in .ctrl-hero-line:nth-child(3) {
   transform: translateY(0);
   opacity: 1;
-  transition-delay: 320ms;
+  transition-delay: 500ms;
 }
 
 .ctrl-hero-sub {
@@ -366,7 +401,7 @@ body {
   max-width: 52ch;
   opacity: 0;
   transform: translateY(10px);
-  transition: transform 500ms ease 150ms, opacity 500ms ease 150ms;
+  transition: transform 500ms ease 600ms, opacity 500ms ease 600ms; /* 0.8s total: 0.2s visual + 0.6s delay */
 }
 
 .ctrl-hero-cta {
@@ -374,7 +409,7 @@ body {
   margin-top: 8px;
   opacity: 0;
   transform: translateY(10px);
-  transition: transform 500ms ease 250ms, opacity 500ms ease 250ms;
+  transition: transform 500ms ease 600ms, opacity 500ms ease 600ms; /* 0.8s total */
 }
 
 @media (max-width: 767px) {
@@ -383,6 +418,10 @@ body {
     background: var(--color-accent-primary);
     color: var(--color-background);
     border-color: var(--color-accent-primary);
+    width: 100%;
+    justify-content: center;
+    padding: 14px 20px;
+    font-size: 14px;
   }
 }
 
@@ -406,7 +445,8 @@ body {
 
 .ctrl-hero-wire {
   mix-blend-mode: normal;
-  filter: saturate(1);
+  /* Apply Signal Orange color to wireframe using CSS filters */
+  filter: brightness(0) saturate(100%) invert(45%) sepia(95%) saturate(5000%) hue-rotate(0deg) brightness(1.1) contrast(1.1);
   opacity: 0.9;
 }
 
@@ -421,12 +461,12 @@ body {
 }
 
 .ctrl-hero.in .ctrl-hero-visual {
-  animation: ctrl-visual-in 650ms cubic-bezier(.2,.7,.2,1) forwards;
+  animation: ctrl-visual-in 200ms cubic-bezier(.2,.7,.2,1) forwards; /* 0.2s per concept */
 }
 
 @keyframes ctrl-visual-in {
   0% { transform: translateX(20px); opacity: 0 }
-  80% { transform: translateX(-2px); opacity: 1 }
+  85% { transform: translateX(-1px); opacity: 1 } /* Subtle "settle" bounce */
   100% { transform: translateX(0); opacity: 1 }
 }
 

@@ -14,7 +14,8 @@ export default function Hero() {
   const mountedRef = useRef<boolean>(false);
 
   useEffect(() => {
-    const t = setTimeout(() => setEntered(true), 100);
+    // Start animation after page transition completes (0.0s per concept)
+    const t = setTimeout(() => setEntered(true), 0);
     return () => clearTimeout(t);
   }, []);
 
@@ -90,54 +91,33 @@ export default function Hero() {
     isDesktopRef.current = window.innerWidth >= 1200;
     mountedRef.current = true;
     
-    // Don't add resize listener on mobile to prevent any state updates
-    if (window.innerWidth < 1200) {
-      return;
-    }
-
-    let rafId: number | null = null;
-    let ticking = false;
-    let resizeTimeout: NodeJS.Timeout | null = null;
-    
-    const update = () => {
-      if (ticking) return;
-      ticking = true;
-      
-      // Debounce resize to prevent excessive updates
-      if (resizeTimeout) clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
-        rafId = requestAnimationFrame(() => {
-          // Only update ref, no state updates
-          isDesktopRef.current = window.innerWidth >= 1200;
-          ticking = false;
-        });
-      }, 150);
-    };
-    
-    window.addEventListener("resize", update, { passive: true });
-    return () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      if (resizeTimeout) clearTimeout(resizeTimeout);
-      window.removeEventListener("resize", update);
-    };
+    // No resize listener needed - we check on each effect run
   }, []);
 
-  // Set initial wire position once on mount
+  // Set initial wire position once on mount - subtle offset per concept
   useEffect(() => {
     const wire = wireRef.current;
     if (wire) {
       try {
-        wire.style.transform = `translate3d(3px, -50px, 0)`;
+        // Initial offset: "almost perfectly over the photo, but offset by a few pixels"
+        wire.style.transform = `translate3d(3px, -3px, 0)`;
       } catch (e) {
         // Ignore errors
       }
     }
   }, []);
 
-  // Effect for desktop mouse handlers only
+  // Effect for desktop mouse handlers only (>=1200px)
   useEffect(() => {
-    // Only run on desktop and when image is loaded
-    if (!mountedRef.current || !isDesktopRef.current || !imageLoaded) {
+    if (typeof window === 'undefined') return;
+    
+    // Only run on desktop
+    if (window.innerWidth < 1200) {
+      return;
+    }
+    
+    // Only run when image is loaded
+    if (!imageLoaded) {
       return;
     }
     
@@ -147,7 +127,7 @@ export default function Hero() {
     if (!el || !photo || !wire) return;
     
     const baseX = 3;
-    const baseY = -50;
+    const baseY = -3; // Match initial offset
     
     let rafId: number | null = null;
     let ticking = false;
@@ -204,6 +184,87 @@ export default function Hero() {
       el.removeEventListener("mouseleave", onLeave);
     };
   }, [imageLoaded]);
+
+  // Effect for tablet/mobile scroll parallax (<1200px)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    // Only run on tablet/mobile
+    const width = window.innerWidth;
+    if (width >= 1200) {
+      return;
+    }
+    
+    const photo = photoRef.current;
+    const wire = wireRef.current;
+    const container = containerRef.current;
+    if (!photo || !wire || !container) return;
+    
+    let rafId: number | null = null;
+    let ticking = false;
+    
+    const baseX = 3;
+    const baseY = -3;
+    
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      rafId = requestAnimationFrame(() => {
+        try {
+          if (!photo || !wire || !container) {
+            ticking = false;
+            return;
+          }
+          
+          const rect = container.getBoundingClientRect();
+          const windowHeight = window.innerHeight;
+          
+          // Calculate scroll progress: how much of the hero section has scrolled past viewport
+          // When section enters viewport, parallax starts
+          // When section exits viewport, parallax completes
+          const sectionTop = rect.top;
+          const sectionBottom = rect.bottom;
+          const sectionHeight = rect.height;
+          
+          // Parallax activates when section is in or near viewport
+          // Calculate offset based on scroll position
+          // Wireframe scrolls faster (moves more) than photo
+          let parallaxOffset = 0;
+          
+          if (sectionTop < windowHeight && sectionBottom > 0) {
+            // Section is in viewport - calculate parallax based on scroll position
+            // As user scrolls down, wireframe moves faster upward (separates from photo)
+            const scrollAmount = windowHeight - sectionTop;
+            parallaxOffset = Math.max(0, Math.min(scrollAmount * 0.15, 40)); // Max 40px separation
+          }
+          
+          // Photo moves slower (less parallax)
+          const photoY = -parallaxOffset * 0.2;
+          // Wireframe moves faster (more parallax) - creates separation
+          const wireY = -parallaxOffset * 0.6 + baseY;
+          
+          photo.style.transform = `translate3d(0, ${photoY}px, 0)`;
+          wire.style.transform = `translate3d(${baseX}px, ${wireY}px, 0)`;
+        } catch (e) {
+          console.error('Hero scroll parallax error:', e);
+        } finally {
+          ticking = false;
+        }
+      });
+    };
+    
+    // Initial call
+    onScroll();
+    
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
 
   const containerClass = useMemo(
     () => ["ctrl-hero", entered ? "in" : ""].filter(Boolean).join(" "),
