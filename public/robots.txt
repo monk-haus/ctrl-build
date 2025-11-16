@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ctrl-build.com/sitemap.xml
+
