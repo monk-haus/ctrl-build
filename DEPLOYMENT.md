@@ -16,10 +16,11 @@
    - Select the repository and branch
 
 2. **Configure Build Settings**
-   - **Framework preset**: Next.js
-   - **Build command**: `npm run build`
-   - **Build output directory**: `.next`
+   - **Framework preset**: Next.js (this will auto-configure most settings)
+   - **Build command**: `npm run build` (or leave empty if using framework preset)
+   - **Build output directory**: Leave empty (Cloudflare auto-detects for Next.js)
    - **Root directory**: `/` (leave empty if root)
+   - **Node.js version**: `20` (IMPORTANT: Must be 20+ for Next.js 16)
 
 3. **Environment Variables** (Optional)
    - Add any environment variables needed
