@@ -16,13 +16,13 @@
    - Select the repository and branch
 
 2. **Configure Build Settings**
-   - **Framework preset**: Next.js (this will auto-configure most settings)
+   - **Framework preset**: Next.js (or None/Other)
    - **Build command**: `npm run build`
-   - **Build output directory**: `.next` (or leave empty for auto-detection)
+   - **Build output directory**: `out` (IMPORTANT: This is where Next.js static export outputs files)
    - **Root directory**: `/` (leave empty if root)
    - **Node.js version**: `20` (IMPORTANT: Must be 20+ for Next.js 16)
    
-   **Note**: For Next.js App Router with dynamic routes, Cloudflare Pages should automatically handle the build. If you encounter issues, you may need to use the `@cloudflare/next-on-pages` adapter.
+   **Note**: This project uses `output: "export"` in `next.config.ts` to generate a static site in the `out` directory, which is perfect for Cloudflare Pages static hosting.
 
 3. **Environment Variables** (Optional)
    - Add any environment variables needed
