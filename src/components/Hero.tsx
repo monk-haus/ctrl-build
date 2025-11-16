@@ -21,16 +21,16 @@ export default function Hero() {
 
   // Preload and track image loading with timeout - only on desktop
   useEffect(() => {
-    // Skip image preloading on mobile to prevent crashes - use lazy loading instead
     if (typeof window === 'undefined') {
       return;
     }
     
+    // Check if mobile first, before any state updates
     const isMobile = window.innerWidth < 1200;
     if (isMobile) {
-      // On mobile, use lazy loading - set loaded immediately but don't preload
-      // The image will load naturally via CSS background-image
-      setImageLoaded(true);
+      // On mobile, don't preload - let CSS handle it naturally
+      // Don't set imageLoaded here - let it load naturally via CSS
+      // This prevents any JavaScript image loading that could cause crashes
       return;
     }
 
@@ -121,112 +121,87 @@ export default function Hero() {
     };
   }, []);
 
+  // Set initial wire position once on mount
   useEffect(() => {
-    // Set initial wire position immediately
     const wire = wireRef.current;
     if (wire) {
       try {
         wire.style.transform = `translate3d(3px, -50px, 0)`;
       } catch (e) {
-        // Ignore errors during initial setup
+        // Ignore errors
       }
     }
+  }, []);
 
-    // On mobile, don't set up any handlers - just static positioning
-    if (!isDesktop) {
-      return;
-    }
-
-    // On desktop, don't set up handlers until image is loaded or errored
-    if (!imageLoaded) {
+  // Effect for desktop mouse handlers only
+  useEffect(() => {
+    // Only run on desktop and when image is loaded
+    if (!isDesktop || !imageLoaded) {
       return;
     }
     
     const el = containerRef.current;
     const photo = photoRef.current;
+    const wire = wireRef.current;
     if (!el || !photo || !wire) return;
     
     const baseX = 3;
     const baseY = -50;
     
-    try {
-      wire.style.transform = `translate3d(${baseX}px, ${baseY}px, 0)`;
-    } catch (e) {
-      console.error('Hero wire transform error:', e);
-      return;
-    }
-
-    let cleanup: (() => void) | undefined;
     let rafId: number | null = null;
     let ticking = false;
 
-    if (isDesktop) {
-      const onMove = (e: MouseEvent) => {
-        if (ticking || !photo || !wire) return;
-        ticking = true;
-        rafId = requestAnimationFrame(() => {
-          try {
-            if (!el || !photo || !wire) {
-              ticking = false;
-              return;
-            }
-            const rect = el.getBoundingClientRect();
-            if (!rect.width || !rect.height) {
-              ticking = false;
-              return;
-            }
-            const cx = rect.left + rect.width / 2;
-            const cy = rect.top + rect.height / 2;
-            const dx = (e.clientX - cx) / rect.width;
-            const dy = (e.clientY - cy) / rect.height;
-            const photoX = (-dx * 8);
-            const photoY = (-dy * 8);
-            const wireX = (dx * 14) + baseX;
-            const wireY = (dy * 14) + baseY;
-            photo.style.transform = `translate3d(${photoX}px, ${photoY}px, 0)`;
-            wire.style.transform = `translate3d(${wireX}px, ${wireY}px, 0)`;
-          } catch (e) {
-            console.error('Hero mouse move error:', e);
-          } finally {
-            ticking = false;
-          }
-        });
-      };
-      const onLeave = () => {
-        if (rafId !== null) cancelAnimationFrame(rafId);
-        ticking = false;
+    const onMove = (e: MouseEvent) => {
+      if (ticking) return;
+      ticking = true;
+      rafId = requestAnimationFrame(() => {
         try {
-          if (photo) photo.style.transform = `translate3d(0, 0, 0)`;
-          if (wire) wire.style.transform = `translate3d(${baseX}px, ${baseY}px, 0)`;
+          if (!el || !photo || !wire) {
+            ticking = false;
+            return;
+          }
+          const rect = el.getBoundingClientRect();
+          if (!rect.width || !rect.height) {
+            ticking = false;
+            return;
+          }
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          const dx = (e.clientX - cx) / rect.width;
+          const dy = (e.clientY - cy) / rect.height;
+          const photoX = (-dx * 8);
+          const photoY = (-dy * 8);
+          const wireX = (dx * 14) + baseX;
+          const wireY = (dy * 14) + baseY;
+          photo.style.transform = `translate3d(${photoX}px, ${photoY}px, 0)`;
+          wire.style.transform = `translate3d(${wireX}px, ${wireY}px, 0)`;
         } catch (e) {
-          console.error('Hero mouse leave error:', e);
+          console.error('Hero mouse move error:', e);
+        } finally {
+          ticking = false;
         }
-      };
-      el.addEventListener("mousemove", onMove, { passive: true });
-      el.addEventListener("mouseleave", onLeave);
-      cleanup = () => {
-        if (rafId !== null) cancelAnimationFrame(rafId);
-        el.removeEventListener("mousemove", onMove);
-        el.removeEventListener("mouseleave", onLeave);
-      };
-    } else {
-      // Disable parallax on mobile to prevent crashes - just set initial positions
+      });
+    };
+    
+    const onLeave = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      ticking = false;
       try {
-        if (photo) {
-          photo.style.transform = `translate3d(0, 0, 0)`;
-        }
-        if (wire) {
-          wire.style.transform = `translate3d(${baseX}px, ${baseY}px, 0)`;
-        }
+        if (photo) photo.style.transform = `translate3d(0, 0, 0)`;
+        if (wire) wire.style.transform = `translate3d(${baseX}px, ${baseY}px, 0)`;
       } catch (e) {
-        console.error('Hero mobile init error:', e);
+        console.error('Hero mouse leave error:', e);
       }
-      // No scroll handler on mobile - just static positioning
-      cleanup = () => {
-        // No cleanup needed for mobile
-      };
-    }
-    return () => { if (cleanup) cleanup(); };
+    };
+    
+    el.addEventListener("mousemove", onMove, { passive: true });
+    el.addEventListener("mouseleave", onLeave);
+    
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      el.removeEventListener("mousemove", onMove);
+      el.removeEventListener("mouseleave", onLeave);
+    };
   }, [isDesktop, imageLoaded]);
 
   const containerClass = useMemo(
@@ -260,13 +235,12 @@ export default function Hero() {
             }}
           />
         )}
-        {!isDesktop && imageLoaded && !imageError && (
+        {!isDesktop && (
           <div
             className="ctrl-hero-photo"
             style={{ 
               backgroundImage: `url(/assets/images/hero/photo.jpg)`,
-              opacity: 1,
-              transition: 'opacity 300ms ease'
+              opacity: 1
             }}
           />
         )}
