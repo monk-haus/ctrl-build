@@ -25,12 +25,22 @@ export default function Header() {
   const pathname = usePathname();
 
   useEffect(() => {
+    let rafId: number | null = null;
+    let ticking = false;
     const onScroll = () => {
-      setIsSticky(window.scrollY > 100);
+      if (ticking) return;
+      ticking = true;
+      rafId = requestAnimationFrame(() => {
+        setIsSticky(window.scrollY > 100);
+        ticking = false;
+      });
     };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", onScroll);
+    };
   }, []);
 
   useEffect(() => {

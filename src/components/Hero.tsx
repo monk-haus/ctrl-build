@@ -16,10 +16,22 @@ export default function Hero() {
   }, []);
 
   useEffect(() => {
-    const update = () => setIsDesktop(window.innerWidth >= 1200);
+    let rafId: number | null = null;
+    let ticking = false;
+    const update = () => {
+      if (ticking) return;
+      ticking = true;
+      rafId = requestAnimationFrame(() => {
+        setIsDesktop(window.innerWidth >= 1200);
+        ticking = false;
+      });
+    };
     update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
+    window.addEventListener("resize", update, { passive: true });
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", update);
+    };
   }, []);
 
   useEffect(() => {
@@ -32,33 +44,47 @@ export default function Hero() {
     wire.style.transform = `translate3d(${baseX}px, ${baseY}px, 0)`;
 
     let cleanup: (() => void) | undefined;
+    let rafId: number | null = null;
+    let ticking = false;
 
     if (isDesktop) {
       const onMove = (e: MouseEvent) => {
-        const rect = el.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
-        const dx = (e.clientX - cx) / rect.width;
-        const dy = (e.clientY - cy) / rect.height;
-        const photoX = (-dx * 8);
-        const photoY = (-dy * 8);
-        const wireX = (dx * 14) + baseX;
-        const wireY = (dy * 14) + baseY;
-        photo.style.transform = `translate3d(${photoX}px, ${photoY}px, 0)`;
-        wire.style.transform = `translate3d(${wireX}px, ${wireY}px, 0)`;
+        if (ticking) return;
+        ticking = true;
+        rafId = requestAnimationFrame(() => {
+          const rect = el.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          const dx = (e.clientX - cx) / rect.width;
+          const dy = (e.clientY - cy) / rect.height;
+          const photoX = (-dx * 8);
+          const photoY = (-dy * 8);
+          const wireX = (dx * 14) + baseX;
+          const wireY = (dy * 14) + baseY;
+          photo.style.transform = `translate3d(${photoX}px, ${photoY}px, 0)`;
+          wire.style.transform = `translate3d(${wireX}px, ${wireY}px, 0)`;
+          ticking = false;
+        });
       };
       const onLeave = () => {
+        if (rafId !== null) cancelAnimationFrame(rafId);
+        ticking = false;
         photo.style.transform = `translate3d(0, 0, 0)`;
         wire.style.transform = `translate3d(${baseX}px, ${baseY}px, 0)`;
       };
-      el.addEventListener("mousemove", onMove);
+      el.addEventListener("mousemove", onMove, { passive: true });
       el.addEventListener("mouseleave", onLeave);
       cleanup = () => {
+        if (rafId !== null) cancelAnimationFrame(rafId);
         el.removeEventListener("mousemove", onMove);
         el.removeEventListener("mouseleave", onLeave);
       };
     } else {
-      const onScroll = () => {
+      // Throttled scroll handler for mobile to prevent performance issues
+      let lastScrollTime = 0;
+      const throttleDelay = 16; // ~60fps
+      
+      const updateTransform = () => {
         const rect = el.getBoundingClientRect();
         const viewportH = window.innerHeight || document.documentElement.clientHeight;
         const visible = Math.max(0, Math.min(rect.bottom, viewportH) - Math.max(rect.top, 0));
@@ -68,10 +94,31 @@ export default function Hero() {
         const wireY = offset * 12 + baseY;
         photo.style.transform = `translate3d(0, ${photoY}px, 0)`;
         wire.style.transform = `translate3d(${baseX}px, ${wireY}px, 0)`;
+        ticking = false;
       };
-      onScroll();
+
+      const onScroll = () => {
+        if (ticking) return;
+        const now = Date.now();
+        if (now - lastScrollTime < throttleDelay) {
+          rafId = requestAnimationFrame(() => {
+            lastScrollTime = Date.now();
+            updateTransform();
+          });
+          return;
+        }
+        ticking = true;
+        lastScrollTime = now;
+        rafId = requestAnimationFrame(updateTransform);
+      };
+      
+      // Initial update
+      updateTransform();
       window.addEventListener("scroll", onScroll, { passive: true });
-      cleanup = () => window.removeEventListener("scroll", onScroll);
+      cleanup = () => {
+        if (rafId !== null) cancelAnimationFrame(rafId);
+        window.removeEventListener("scroll", onScroll);
+      };
     }
     return () => { if (cleanup) cleanup(); };
   }, [isDesktop]);
