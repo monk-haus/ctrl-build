@@ -209,6 +209,12 @@ const CASES: Record<string, CS> = {
   },
 };
 
+export async function generateStaticParams() {
+  return Object.keys(CASES).map((slug) => ({
+    slug,
+  }));
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const cs = CASES[slug];
