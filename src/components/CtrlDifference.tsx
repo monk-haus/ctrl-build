@@ -9,16 +9,30 @@ export default function CtrlDifference() {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) setInView(true);
-        });
-      },
-      { threshold: 0.2 }
-    );
-    io.observe(el);
-    return () => io.disconnect();
+    try {
+      const io = new IntersectionObserver(
+        (entries) => {
+          try {
+            entries.forEach((e) => {
+              if (e.isIntersecting) setInView(true);
+            });
+          } catch (e) {
+            console.error('CtrlDifference IntersectionObserver callback error:', e);
+          }
+        },
+        { threshold: 0.2 }
+      );
+      io.observe(el);
+      return () => {
+        try {
+          io.disconnect();
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      };
+    } catch (e) {
+      console.error('CtrlDifference IntersectionObserver setup error:', e);
+    }
   }, []);
   const cls = useMemo(
     () => ["ctrl-diff", inView ? "in" : ""].filter(Boolean).join(" "),

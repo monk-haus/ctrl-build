@@ -5,10 +5,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 export default function Hero() {
   const [entered, setEntered] = useState(false);
-  const [isDesktop, setIsDesktop] = useState<boolean>(true);
+  // Initialize with false for SSR/mobile, will be set correctly on mount
+  const [isDesktop, setIsDesktop] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const photoRef = useRef<HTMLDivElement | null>(null);
   const wireRef = useRef<HTMLDivElement | null>(null);
+  const isDesktopRef = useRef<boolean>(false);
 
   useEffect(() => {
     const t = setTimeout(() => setEntered(true), 100);
@@ -16,20 +18,38 @@ export default function Hero() {
   }, []);
 
   useEffect(() => {
+    // Set initial value on mount
+    const initialIsDesktop = typeof window !== 'undefined' && window.innerWidth >= 1200;
+    isDesktopRef.current = initialIsDesktop;
+    setIsDesktop(initialIsDesktop);
+
     let rafId: number | null = null;
     let ticking = false;
+    let resizeTimeout: NodeJS.Timeout | null = null;
+    
     const update = () => {
       if (ticking) return;
       ticking = true;
-      rafId = requestAnimationFrame(() => {
-        setIsDesktop(window.innerWidth >= 1200);
-        ticking = false;
-      });
+      
+      // Debounce resize to prevent excessive updates
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        rafId = requestAnimationFrame(() => {
+          const newIsDesktop = window.innerWidth >= 1200;
+          // Only update state if value actually changed
+          if (newIsDesktop !== isDesktopRef.current) {
+            isDesktopRef.current = newIsDesktop;
+            setIsDesktop(newIsDesktop);
+          }
+          ticking = false;
+        });
+      }, 150); // Debounce resize events
     };
-    update();
+    
     window.addEventListener("resize", update, { passive: true });
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
+      if (resizeTimeout) clearTimeout(resizeTimeout);
       window.removeEventListener("resize", update);
     };
   }, []);
@@ -82,40 +102,51 @@ export default function Hero() {
     } else {
       // Throttled scroll handler for mobile to prevent performance issues
       let lastScrollTime = 0;
-      const throttleDelay = 16; // ~60fps
+      const throttleDelay = 50; // Increased throttle for mobile (20fps is fine for parallax)
       
       const updateTransform = () => {
-        const rect = el.getBoundingClientRect();
-        const viewportH = window.innerHeight || document.documentElement.clientHeight;
-        const visible = Math.max(0, Math.min(rect.bottom, viewportH) - Math.max(rect.top, 0));
-        const progress = visible / Math.max(1, rect.height);
-        const offset = (1 - progress); 
-        const photoY = offset * -6;
-        const wireY = offset * 12 + baseY;
-        photo.style.transform = `translate3d(0, ${photoY}px, 0)`;
-        wire.style.transform = `translate3d(${baseX}px, ${wireY}px, 0)`;
-        ticking = false;
+        try {
+          const rect = el.getBoundingClientRect();
+          // Check if element is still in DOM
+          if (!rect.width || !rect.height) {
+            ticking = false;
+            return;
+          }
+          const viewportH = window.innerHeight || document.documentElement.clientHeight;
+          const visible = Math.max(0, Math.min(rect.bottom, viewportH) - Math.max(rect.top, 0));
+          const progress = visible / Math.max(1, rect.height);
+          const offset = (1 - progress); 
+          const photoY = offset * -6;
+          const wireY = offset * 12 + baseY;
+          photo.style.transform = `translate3d(0, ${photoY}px, 0)`;
+          wire.style.transform = `translate3d(${baseX}px, ${wireY}px, 0)`;
+        } catch (e) {
+          // Silently handle any errors
+          console.error('Hero scroll update error:', e);
+        } finally {
+          ticking = false;
+        }
       };
 
       const onScroll = () => {
         if (ticking) return;
         const now = Date.now();
         if (now - lastScrollTime < throttleDelay) {
-          rafId = requestAnimationFrame(() => {
-            lastScrollTime = Date.now();
-            updateTransform();
-          });
-          return;
+          return; // Skip this scroll event
         }
         ticking = true;
         lastScrollTime = now;
         rafId = requestAnimationFrame(updateTransform);
       };
       
-      // Initial update
-      updateTransform();
+      // Initial update with delay to ensure DOM is ready
+      const initTimeout = setTimeout(() => {
+        updateTransform();
+      }, 100);
+      
       window.addEventListener("scroll", onScroll, { passive: true });
       cleanup = () => {
+        clearTimeout(initTimeout);
         if (rafId !== null) cancelAnimationFrame(rafId);
         window.removeEventListener("scroll", onScroll);
       };
