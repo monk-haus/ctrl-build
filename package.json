@@ -7,7 +7,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "cf:deploy": "npm run build && wrangler pages deploy .next"
   },
   "dependencies": {
     "next": "16.0.3",
