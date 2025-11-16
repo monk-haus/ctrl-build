@@ -19,21 +19,36 @@ export default function Hero() {
     return () => clearTimeout(t);
   }, []);
 
-  // Preload and track image loading with timeout
+  // Preload and track image loading with timeout - only on desktop
   useEffect(() => {
+    // Skip image preloading on mobile to prevent crashes - use lazy loading instead
+    if (typeof window === 'undefined') {
+      return;
+    }
+    
+    const isMobile = window.innerWidth < 1200;
+    if (isMobile) {
+      // On mobile, use lazy loading - set loaded immediately but don't preload
+      // The image will load naturally via CSS background-image
+      setImageLoaded(true);
+      return;
+    }
+
     let timeoutId: NodeJS.Timeout;
     let loaded = false;
+    let cancelled = false;
+    
     const img = new Image();
     
     const handleLoad = () => {
-      if (loaded) return;
+      if (loaded || cancelled) return;
       loaded = true;
       clearTimeout(timeoutId);
       setImageLoaded(true);
     };
     
     const handleError = () => {
-      if (loaded) return;
+      if (loaded || cancelled) return;
       loaded = true;
       clearTimeout(timeoutId);
       console.error('Hero photo failed to load');
@@ -43,21 +58,29 @@ export default function Hero() {
     
     // Set timeout to prevent indefinite waiting
     timeoutId = setTimeout(() => {
-      if (!loaded) {
+      if (!loaded && !cancelled) {
         console.warn('Hero photo loading timeout');
         handleError();
       }
     }, 5000); // 5 second timeout
     
-    img.onload = handleLoad;
-    img.onerror = handleError;
-    img.src = '/assets/images/hero/photo.jpg';
+    try {
+      img.onload = handleLoad;
+      img.onerror = handleError;
+      img.src = '/assets/images/hero/photo.jpg';
+    } catch (e) {
+      console.error('Error setting up image preload:', e);
+      handleError();
+    }
     
     return () => {
+      cancelled = true;
       loaded = true; // Prevent callbacks after cleanup
       clearTimeout(timeoutId);
-      img.onload = null;
-      img.onerror = null;
+      if (img) {
+        img.onload = null;
+        img.onerror = null;
+      }
     };
   }, []);
 
@@ -99,23 +122,28 @@ export default function Hero() {
   }, []);
 
   useEffect(() => {
-    // Don't set up handlers until image is loaded or errored
-    if (!imageLoaded) {
-      // Set initial wire position even if image isn't loaded yet
-      const wire = wireRef.current;
-      if (wire) {
-        try {
-          wire.style.transform = `translate3d(3px, -50px, 0)`;
-        } catch (e) {
-          // Ignore errors during initial setup
-        }
+    // Set initial wire position immediately
+    const wire = wireRef.current;
+    if (wire) {
+      try {
+        wire.style.transform = `translate3d(3px, -50px, 0)`;
+      } catch (e) {
+        // Ignore errors during initial setup
       }
+    }
+
+    // On mobile, don't set up any handlers - just static positioning
+    if (!isDesktop) {
+      return;
+    }
+
+    // On desktop, don't set up handlers until image is loaded or errored
+    if (!imageLoaded) {
       return;
     }
     
     const el = containerRef.current;
     const photo = photoRef.current;
-    const wire = wireRef.current;
     if (!el || !photo || !wire) return;
     
     const baseX = 3;
@@ -221,15 +249,27 @@ export default function Hero() {
         <Link href="/portfolio" className="ctrl-cta ctrl-hero-cta">[ VIEW RECENT WORK ]</Link>
       </div>
       <div className="ctrl-hero-right ctrl-hero-visual ctrl-hero-visual-enter" ref={containerRef}>
-        <div
-          ref={photoRef}
-          className="ctrl-hero-photo"
-          style={{ 
-            backgroundImage: imageError ? 'none' : `url(/assets/images/hero/photo.jpg)`,
-            opacity: imageLoaded ? 1 : 0,
-            transition: 'opacity 300ms ease'
-          }}
-        />
+        {isDesktop && (
+          <div
+            ref={photoRef}
+            className="ctrl-hero-photo"
+            style={{ 
+              backgroundImage: imageError ? 'none' : (imageLoaded ? `url(/assets/images/hero/photo.jpg)` : 'none'),
+              opacity: imageLoaded && !imageError ? 1 : 0,
+              transition: 'opacity 300ms ease'
+            }}
+          />
+        )}
+        {!isDesktop && imageLoaded && !imageError && (
+          <div
+            className="ctrl-hero-photo"
+            style={{ 
+              backgroundImage: `url(/assets/images/hero/photo.jpg)`,
+              opacity: 1,
+              transition: 'opacity 300ms ease'
+            }}
+          />
+        )}
         <div
           ref={wireRef}
           className="ctrl-hero-wire"
