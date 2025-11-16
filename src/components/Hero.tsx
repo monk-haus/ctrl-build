@@ -19,20 +19,43 @@ export default function Hero() {
     return () => clearTimeout(t);
   }, []);
 
-  // Preload and track image loading
+  // Preload and track image loading with timeout
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    let loaded = false;
     const img = new Image();
-    img.onload = () => {
+    
+    const handleLoad = () => {
+      if (loaded) return;
+      loaded = true;
+      clearTimeout(timeoutId);
       setImageLoaded(true);
     };
-    img.onerror = () => {
+    
+    const handleError = () => {
+      if (loaded) return;
+      loaded = true;
+      clearTimeout(timeoutId);
       console.error('Hero photo failed to load');
       setImageError(true);
       setImageLoaded(true); // Set to true anyway to prevent blocking
     };
+    
+    // Set timeout to prevent indefinite waiting
+    timeoutId = setTimeout(() => {
+      if (!loaded) {
+        console.warn('Hero photo loading timeout');
+        handleError();
+      }
+    }, 5000); // 5 second timeout
+    
+    img.onload = handleLoad;
+    img.onerror = handleError;
     img.src = '/assets/images/hero/photo.jpg';
     
     return () => {
+      loaded = true; // Prevent callbacks after cleanup
+      clearTimeout(timeoutId);
       img.onload = null;
       img.onerror = null;
     };
@@ -77,7 +100,18 @@ export default function Hero() {
 
   useEffect(() => {
     // Don't set up handlers until image is loaded or errored
-    if (!imageLoaded) return;
+    if (!imageLoaded) {
+      // Set initial wire position even if image isn't loaded yet
+      const wire = wireRef.current;
+      if (wire) {
+        try {
+          wire.style.transform = `translate3d(3px, -50px, 0)`;
+        } catch (e) {
+          // Ignore errors during initial setup
+        }
+      }
+      return;
+    }
     
     const el = containerRef.current;
     const photo = photoRef.current;
@@ -148,59 +182,20 @@ export default function Hero() {
         el.removeEventListener("mouseleave", onLeave);
       };
     } else {
-      // Throttled scroll handler for mobile to prevent performance issues
-      let lastScrollTime = 0;
-      const throttleDelay = 50; // Increased throttle for mobile (20fps is fine for parallax)
-      
-      const updateTransform = () => {
-        try {
-          if (!el || !photo || !wire) {
-            ticking = false;
-            return;
-          }
-          const rect = el.getBoundingClientRect();
-          // Check if element is still in DOM
-          if (!rect.width || !rect.height) {
-            ticking = false;
-            return;
-          }
-          const viewportH = window.innerHeight || document.documentElement.clientHeight;
-          const visible = Math.max(0, Math.min(rect.bottom, viewportH) - Math.max(rect.top, 0));
-          const progress = visible / Math.max(1, rect.height);
-          const offset = (1 - progress); 
-          const photoY = offset * -6;
-          const wireY = offset * 12 + baseY;
-          photo.style.transform = `translate3d(0, ${photoY}px, 0)`;
-          wire.style.transform = `translate3d(${baseX}px, ${wireY}px, 0)`;
-        } catch (e) {
-          // Silently handle any errors
-          console.error('Hero scroll update error:', e);
-        } finally {
-          ticking = false;
+      // Disable parallax on mobile to prevent crashes - just set initial positions
+      try {
+        if (photo) {
+          photo.style.transform = `translate3d(0, 0, 0)`;
         }
-      };
-
-      const onScroll = () => {
-        if (ticking) return;
-        const now = Date.now();
-        if (now - lastScrollTime < throttleDelay) {
-          return; // Skip this scroll event
+        if (wire) {
+          wire.style.transform = `translate3d(${baseX}px, ${baseY}px, 0)`;
         }
-        ticking = true;
-        lastScrollTime = now;
-        rafId = requestAnimationFrame(updateTransform);
-      };
-      
-      // Initial update with delay to ensure DOM is ready
-      const initTimeout = setTimeout(() => {
-        updateTransform();
-      }, 100);
-      
-      window.addEventListener("scroll", onScroll, { passive: true });
+      } catch (e) {
+        console.error('Hero mobile init error:', e);
+      }
+      // No scroll handler on mobile - just static positioning
       cleanup = () => {
-        clearTimeout(initTimeout);
-        if (rafId !== null) cancelAnimationFrame(rafId);
-        window.removeEventListener("scroll", onScroll);
+        // No cleanup needed for mobile
       };
     }
     return () => { if (cleanup) cleanup(); };
