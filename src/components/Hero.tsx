@@ -5,14 +5,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 export default function Hero() {
   const [entered, setEntered] = useState(false);
-  // Initialize with false for SSR/mobile, will be set correctly on mount
-  const [isDesktop, setIsDesktop] = useState<boolean>(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const photoRef = useRef<HTMLDivElement | null>(null);
   const wireRef = useRef<HTMLDivElement | null>(null);
   const isDesktopRef = useRef<boolean>(false);
+  const mountedRef = useRef<boolean>(false);
 
   useEffect(() => {
     const t = setTimeout(() => setEntered(true), 100);
@@ -85,10 +84,16 @@ export default function Hero() {
   }, []);
 
   useEffect(() => {
-    // Set initial value on mount
-    const initialIsDesktop = typeof window !== 'undefined' && window.innerWidth >= 1200;
-    isDesktopRef.current = initialIsDesktop;
-    setIsDesktop(initialIsDesktop);
+    if (typeof window === 'undefined') return;
+    
+    // Set initial value on mount - use ref only, no state updates
+    isDesktopRef.current = window.innerWidth >= 1200;
+    mountedRef.current = true;
+    
+    // Don't add resize listener on mobile to prevent any state updates
+    if (window.innerWidth < 1200) {
+      return;
+    }
 
     let rafId: number | null = null;
     let ticking = false;
@@ -102,15 +107,11 @@ export default function Hero() {
       if (resizeTimeout) clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
         rafId = requestAnimationFrame(() => {
-          const newIsDesktop = window.innerWidth >= 1200;
-          // Only update state if value actually changed
-          if (newIsDesktop !== isDesktopRef.current) {
-            isDesktopRef.current = newIsDesktop;
-            setIsDesktop(newIsDesktop);
-          }
+          // Only update ref, no state updates
+          isDesktopRef.current = window.innerWidth >= 1200;
           ticking = false;
         });
-      }, 150); // Debounce resize events
+      }, 150);
     };
     
     window.addEventListener("resize", update, { passive: true });
@@ -136,7 +137,7 @@ export default function Hero() {
   // Effect for desktop mouse handlers only
   useEffect(() => {
     // Only run on desktop and when image is loaded
-    if (!isDesktop || !imageLoaded) {
+    if (!mountedRef.current || !isDesktopRef.current || !imageLoaded) {
       return;
     }
     
@@ -202,7 +203,7 @@ export default function Hero() {
       el.removeEventListener("mousemove", onMove);
       el.removeEventListener("mouseleave", onLeave);
     };
-  }, [isDesktop, imageLoaded]);
+  }, [imageLoaded]);
 
   const containerClass = useMemo(
     () => ["ctrl-hero", entered ? "in" : ""].filter(Boolean).join(" "),
@@ -224,26 +225,14 @@ export default function Hero() {
         <Link href="/portfolio" className="ctrl-cta ctrl-hero-cta">[ VIEW RECENT WORK ]</Link>
       </div>
       <div className="ctrl-hero-right ctrl-hero-visual ctrl-hero-visual-enter" ref={containerRef}>
-        {isDesktop && (
-          <div
-            ref={photoRef}
-            className="ctrl-hero-photo"
-            style={{ 
-              backgroundImage: imageError ? 'none' : (imageLoaded ? `url(/assets/images/hero/photo.jpg)` : 'none'),
-              opacity: imageLoaded && !imageError ? 1 : 0,
-              transition: 'opacity 300ms ease'
-            }}
-          />
-        )}
-        {!isDesktop && (
-          <div
-            className="ctrl-hero-photo"
-            style={{ 
-              backgroundImage: `url(/assets/images/hero/photo.jpg)`,
-              opacity: 1
-            }}
-          />
-        )}
+        <div
+          ref={photoRef}
+          className="ctrl-hero-photo"
+          style={{ 
+            backgroundImage: imageError ? 'none' : `url(/assets/images/hero/photo.jpg)`,
+            opacity: imageError ? 0 : 1
+          }}
+        />
         <div
           ref={wireRef}
           className="ctrl-hero-wire"
