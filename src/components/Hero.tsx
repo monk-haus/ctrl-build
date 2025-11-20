@@ -18,6 +18,8 @@ export default function Hero() {
     return window.matchMedia("(min-width: 1200px)").matches;
   }, []);
 
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+
   // Start animation after hydration completes
   useEffect(() => {
     const rafId = requestAnimationFrame(() => {
@@ -26,9 +28,12 @@ export default function Hero() {
     return () => cancelAnimationFrame(rafId);
   }, []);
 
-  // Image preload - only on desktop, only once
+  // Image preload - only desktop
   useEffect(() => {
-    if (!isDesktop) return;
+    if (!isDesktop) {
+      setImageLoaded(true);
+      return;
+    }
     if (typeof window === 'undefined') return;
 
     let timeoutId: NodeJS.Timeout;
@@ -149,72 +154,10 @@ export default function Hero() {
     };
   }, [isDesktop, imageLoaded]);
 
-  // Mobile/tablet scroll parallax - ONLY runs on mobile/tablet, NEVER on desktop
+  // Mobile/tablet scroll parallax - DISABLED to prevent Safari crashes
   useEffect(() => {
     if (isDesktop) return;
-    if (typeof window === 'undefined') return;
-    
-    const photo = photoRef.current;
-    const wire = wireRef.current;
-    const container = containerRef.current;
-    if (!photo || !wire || !container) return;
-    
-    let rafId: number | null = null;
-    let ticking = false;
-    
-    const baseX = 3;
-    const baseY = -3;
-    
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      rafId = requestAnimationFrame(() => {
-        try {
-          if (!photo || !wire || !container) {
-            ticking = false;
-            return;
-          }
-          
-          const rect = container.getBoundingClientRect();
-          const windowHeight = window.innerHeight;
-          
-          const sectionTop = rect.top;
-          const sectionBottom = rect.bottom;
-          
-          let parallaxOffset = 0;
-          
-          if (sectionTop < windowHeight && sectionBottom > 0) {
-            const scrollAmount = windowHeight - sectionTop;
-            parallaxOffset = Math.max(0, Math.min(scrollAmount * 0.15, 40));
-          }
-          
-          const photoY = -parallaxOffset * 0.2;
-          const wireY = -parallaxOffset * 0.6 + baseY;
-          
-          photo.style.transform = `translate3d(0, ${photoY}px, 0)`;
-          wire.style.transform = `translate3d(${baseX}px, ${wireY}px, 0)`;
-        } catch (e) {
-          console.error('Hero scroll parallax error:', e);
-        } finally {
-          ticking = false;
-        }
-      });
-    };
-    
-    // Initial call after a frame to ensure DOM is ready
-    const initRaf = requestAnimationFrame(() => {
-      onScroll();
-    });
-    
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll, { passive: true });
-    
-    return () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      cancelAnimationFrame(initRaf);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
+    return;
   }, [isDesktop]);
 
   const containerClass = useMemo(
@@ -242,7 +185,8 @@ export default function Hero() {
           className="ctrl-hero-photo"
           style={{ 
             backgroundImage: imageError ? 'none' : `url(/assets/images/hero/photo.jpg)`,
-            opacity: imageError ? 0 : 1
+            opacity: imageError ? 0 : 1,
+            transform: isMobile ? "none" : undefined
           }}
         />
         <div
@@ -253,7 +197,7 @@ export default function Hero() {
             backgroundSize: "contain", 
             backgroundRepeat: "no-repeat", 
             backgroundPosition: "center",
-            transform: "translate3d(3px, -3px, 0)"
+            transform: isMobile ? "none" : "translate3d(3px, -3px, 0)"
           }}
         />
       </div>

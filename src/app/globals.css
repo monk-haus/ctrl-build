@@ -444,11 +444,7 @@ body {
 }
 
 .ctrl-hero-wire {
-  mix-blend-mode: normal;
-  /* Apply Signal Orange color to wireframe using CSS filters */
-  filter: brightness(0) saturate(100%) invert(45%) sepia(95%) saturate(5000%) hue-rotate(0deg) brightness(1.1) contrast(1.1);
   opacity: 0.9;
-  /* Initial transform is set inline in JSX to ensure server/client match */
 }
 
 .ctrl-hero-visual-enter {
@@ -463,6 +459,16 @@ body {
 
 .ctrl-hero.in .ctrl-hero-visual {
   animation: ctrl-visual-in 200ms cubic-bezier(.2,.7,.2,1) forwards; /* 0.2s per concept */
+}
+
+/* Disable heavy transforms + filters on small devices to stop Safari crashes */
+@media (max-width: 767px) {
+  .ctrl-hero-photo,
+  .ctrl-hero-wire {
+    transform: none !important;
+    will-change: auto !important;
+    filter: none !important;
+  }
 }
 
 @keyframes ctrl-visual-in {
