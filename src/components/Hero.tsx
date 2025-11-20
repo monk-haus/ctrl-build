@@ -19,6 +19,9 @@ export default function Hero() {
   }, []);
 
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const heroImage = isMobile
+    ? "/assets/images/hero/photo-mobile.jpg"
+    : "/assets/images/hero/photo.jpg";
 
   // Start animation after hydration completes
   useEffect(() => {
@@ -182,13 +185,13 @@ export default function Hero() {
         </div>
         <div className="ctrl-hero-right ctrl-hero-visual" ref={containerRef}>
           <div
-            ref={photoRef}
-            className="ctrl-hero-photo"
-            style={{
-              backgroundImage: imageError ? "none" : "url(/assets/images/hero/photo.jpg)",
-              opacity: imageError ? 0 : 1
-            }}
-          />
+          ref={photoRef}
+          className="ctrl-hero-photo"
+          style={{
+            backgroundImage: imageError ? "none" : `url(${heroImage})`,
+            opacity: imageError ? 0 : 1
+          }}
+        />
           <div
             ref={wireRef}
             className="ctrl-hero-wire"
@@ -224,7 +227,7 @@ export default function Hero() {
           ref={photoRef}
           className="ctrl-hero-photo"
           style={{ 
-            backgroundImage: imageError ? 'none' : `url(/assets/images/hero/photo.jpg)`,
+            backgroundImage: imageError ? 'none' : `url(${heroImage})`,
             opacity: imageError ? 0 : 1,
             transform: isMobile ? "none" : undefined
           }}

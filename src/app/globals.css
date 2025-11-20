@@ -568,6 +568,33 @@ body {
   }
 }
 
+/* Mobile hero stabilization */
+@media (max-width: 767px) {
+  .ctrl-hero-photo {
+    background-size: contain !important;
+    background-position: top center !important;
+    background-repeat: no-repeat !important;
+    transform: none !important;
+    animation: none !important;
+    opacity: 1 !important;
+    will-change: auto !important;
+  }
+
+  .ctrl-hero-wire {
+    transform: none !important;
+    animation: none !important;
+    opacity: 1 !important;
+    will-change: auto !important;
+  }
+
+  .ctrl-hero-visual,
+  .ctrl-hero-visual-enter {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}
+
 .ctrl-manifesto-h2 {
   font-family: var(--font-raptor), ui-sans-serif, system-ui;
   color: var(--color-text-primary);
