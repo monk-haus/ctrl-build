@@ -165,6 +165,46 @@ export default function Hero() {
     [entered]
   );
 
+  if (isMobile) {
+    return (
+      <section className="ctrl-hero in">
+        <div className="ctrl-hero-grid" />
+        <div className="ctrl-hero-left">
+          <h1 className="ctrl-hero-h1">
+            <span className="ctrl-hero-line">COMMAND</span>
+            <span className="ctrl-hero-line">YOUR</span>
+            <span className="ctrl-hero-line">SPACE.</span>
+          </h1>
+          <p className="ctrl-hero-sub">
+            We are CTRL+Build. A next-generation construction firm merging digital precision with master craftsmanship to deliver projects of unparalleled quality.
+          </p>
+          <Link href="/portfolio" className="ctrl-cta ctrl-hero-cta">[ VIEW RECENT WORK ]</Link>
+        </div>
+        <div className="ctrl-hero-right ctrl-hero-visual" ref={containerRef}>
+          <div
+            ref={photoRef}
+            className="ctrl-hero-photo"
+            style={{
+              backgroundImage: imageError ? "none" : "url(/assets/images/hero/photo.jpg)",
+              opacity: imageError ? 0 : 1
+            }}
+          />
+          <div
+            ref={wireRef}
+            className="ctrl-hero-wire"
+            style={{
+              backgroundImage: "url(/assets/images/hero/blueprint.png)",
+              backgroundSize: "contain",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "center"
+            }}
+          />
+        </div>
+        <div className="ctrl-scroll-indicator">+</div>
+      </section>
+    );
+  }
+
   return (
     <section className={containerClass}>
       <div className="ctrl-hero-grid" />

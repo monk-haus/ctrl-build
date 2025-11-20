@@ -471,6 +471,29 @@ body {
   }
 }
 
+/* Mobile: Disable all hero animations & transitions to prevent Safari crashes */
+@media (max-width: 767px) {
+  .ctrl-hero-visual,
+  .ctrl-hero-visual-enter {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+
+  .ctrl-hero-photo,
+  .ctrl-hero-wire {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+    will-change: auto !important;
+  }
+
+  .ctrl-hero-grid {
+    animation: none !important;
+    opacity: 0.3 !important;
+  }
+}
+
 @keyframes ctrl-visual-in {
   0% { transform: translateX(20px); opacity: 0 }
   85% { transform: translateX(-1px); opacity: 1 } /* Subtle "settle" bounce */
